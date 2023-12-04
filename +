@@ -1,0 +1,39 @@
+type digit int * {prev_digit: digit option; next_digit: digit option; surrounded: bool};;
+type block_kind = Empty | Symbol | Digit of int;;
+
+let rec parse_grid grid =
+    let line = read_line () in
+    let parse c = match c with
+        | '0'..'9' -> Digit(int_of_char c)
+        | '.' -> Empty
+        | _ -> Symbol
+    in
+    match line with
+    | "" -> grid
+    | _ ->
+        let grid_line = List.map parse (List.init (String.length line) (String.get line)) in
+        parse_grid (grid_line :: grid)
+;;
+
+let rec print_grid grid  =
+    let b2c b = match b with
+    | Empty -> ' '
+    | Symbol -> '*'
+    | Digit(x) -> (char_of_int x)
+    in
+    let render_line line =
+        let chars = List.map b2c line in
+        String.init (List.length chars) (List.nth chars)
+    in
+    match grid with
+    | [] -> ()
+    | line :: rest ->
+        print_endline (render_line line);
+        print_grid rest
+
+
+let part1 () =
+    let grid = parse_grid [] in
+    print_grid grid;
+    -1
+;;
