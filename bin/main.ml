@@ -9,6 +9,7 @@ let run_part1 str =
   | "3" -> Day3.part1 ()
   | "4" -> Day4.part1 ()
   | "5" -> Day5.part1 ()
+  | "6" -> Day6.part1 ()
   | _ -> raise DayNotRegisterd
 
 let run_part2 str =
@@ -17,6 +18,7 @@ let run_part2 str =
   | "3" -> Day3.part2 ()
   | "4" -> Day4.part2 ()
   | "5" -> Day5.part2 ()
+  | "6" -> Day6.part2 ()
   | _ -> raise DayNotRegisterd
 
 type parts_t = Both | Part1 | Part2
