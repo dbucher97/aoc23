@@ -26,12 +26,19 @@ let parse_race2 () =
   let distance =
     List.map string_of_int b |> List.fold_left ( ^ ) "" |> int_of_string
   in
-  time, distance
+  (time, distance)
 
 let options (t, distance) =
   let l = distances t in
   let l = List.filter (fun x -> x > distance) l in
   List.length l
+
+let options_efficient (t, distance) =
+  let sq = float_of_int ((t * t) - (4 * distance)) |> Float.sqrt in
+  let upper = 0.5 *. (float_of_int t +. sq) in
+  let lower = 0.5 *. (float_of_int t -. sq) in
+
+  Float.floor upper -. Float.ceil lower +. 1. |> int_of_float
 
 let part1 () =
   let race = parse_race () in
@@ -40,4 +47,4 @@ let part1 () =
 
 let part2 () =
   let time, distance = parse_race2 () in
-  options (time, distance)
+  options_efficient (time, distance)
