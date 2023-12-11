@@ -128,26 +128,42 @@ let get_loop ground start direction =
   count_loop' ground (advance_state ground state) [ start ]
 ;;
 
+type line_state =
+  | FromAbove
+  | FromBelow
+  | Not
+
 type scan_state =
-  | Full of int
-  | HalfUp of int
-  | HalfDown of int
+  { crossing : int
+  ; line : line_state
+  ; on_line : bool
+  }
 
 exception ScanFailed
 
 let advance_scan scan item is_loop =
   if not is_loop
-  then scan
+  then { scan with on_line = false }
   else (
     match scan, item with
-    | Full x, Vertical -> Full (x + 1)
-    | _, Horizontal | _, None -> scan
-    | Full x, Bend_NE | Full x, Bend_NW -> HalfUp x
-    | Full x, Bend_SW | Full x, Bend_SE | Full x, Start-> HalfDown x
-    | HalfUp x, Bend_NE | HalfUp x, Bend_NW -> Full x
-    | HalfDown x, Bend_SW | HalfDown x, Bend_SE | HalfDown x, Start -> Full x
-    | HalfDown x, Bend_NE | HalfDown x, Bend_NW -> Full (x + 1)
-    | HalfUp x, Bend_SW | HalfUp x, Bend_SE | HalfUp x, Start -> Full (x + 1)
+    | { crossing; line = Not; _ }, Vertical ->
+      { crossing = crossing + 1; line = Not; on_line = true }
+    | { crossing; line = Not; _ }, Bend_NE ->
+      { crossing; line = FromAbove; on_line = true }
+    | { crossing; line = Not; _ }, Bend_SE | { crossing; line = Not; _ }, Start ->
+      { crossing; line = FromBelow; on_line = true }
+    | { crossing; line = FromAbove; _ }, Horizontal ->
+      { crossing; line = FromAbove; on_line = true }
+    | { crossing; line = FromBelow; _ }, Horizontal ->
+      { crossing; line = FromBelow; on_line = true }
+    | { crossing; line = FromAbove; _ }, Bend_NW ->
+      { crossing; line = Not; on_line = true }
+    | { crossing; line = FromBelow; _ }, Bend_NW ->
+      { crossing = crossing + 1; line = Not; on_line = true }
+    | { crossing; line = FromBelow; _ }, Bend_SW ->
+      { crossing; line = Not; on_line = true }
+    | { crossing; line = FromAbove; _ }, Bend_SW ->
+      { crossing = crossing + 1; line = Not; on_line = true }
     | _ -> raise ScanFailed)
 ;;
 
@@ -160,12 +176,17 @@ let inside_loop loop ground (la, lb) =
       let scan = advance_scan scan (get_pipe ground (y, x)) (is_loop (y, x)) in
       let isodd =
         (match scan with
-         | Full x | HalfDown x | HalfUp x -> x mod 2)
+         | { crossing; line = Not; on_line = false } -> crossing mod 2
+         | _ -> 0)
         == 1
       in
       isodd :: fill_line y (x + 1) scan)
   in
-  let rec lines y = if y == la then [] else fill_line y 0 (Full 0) :: lines (y + 1) in
+  let rec lines y =
+    if y == la
+    then []
+    else fill_line y 0 { crossing = 0; line = Not; on_line = false } :: lines (y + 1)
+  in
   lines 0
 ;;
 
@@ -176,15 +197,10 @@ let part2 () =
   let inside_loop =
     inside_loop loop ground (Array.length ground, Array.length (Array.get ground 0))
   in
-  let inside_flattened = List.concat inside_loop in
-  let ground_flattened = List.concat (Array.to_list (Array.map Array.to_list ground)) in
   let pr_line l =
     List.map (fun x -> if x then "I" else " ") l |> List.fold_left ( ^ ) ""
   in
   List.iter (fun x -> print_endline (pr_line x)) inside_loop;
-  let combined = List.combine inside_flattened ground_flattened in
-  List.iter (fun (x, _) -> if x then print_char 'i' else print_char ' ') combined;
-  print_endline "";
-  List.iter (fun (_, x) -> if x == None then print_char 'x' else print_char ' ') combined;
-  List.fold_left (fun c (x, y) -> if y == None && x then c + 1 else c) 0 combined
+  let inside_flattened = List.concat inside_loop in
+  List.fold_left (fun c x -> if x then c + 1 else c) 0 inside_flattened
 ;;
