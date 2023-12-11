@@ -1,1 +1,2 @@
-library (name aoc23)
+(library
+ (name aoc23))
