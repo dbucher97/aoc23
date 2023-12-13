@@ -31,3 +31,12 @@ let rec parse_matrix f =
   | "" -> []
   | x -> (List.init (String.length x) (String.get x) |> List.map f) :: parse_matrix f
 ;;
+
+let list_equal x y = List.combine x y |> List.for_all (fun (a, b) -> a == b)
+
+let rec transpose = function
+  | [] | [] :: _ -> []
+  | rows -> List.map List.hd rows :: transpose (List.map List.tl rows)
+;;
+
+let sum = List.fold_left (+) 0
