@@ -85,31 +85,41 @@ let rec print_arr l =
     print_arr tl
 ;;
 
-type opt =
-  { min : int
-  ; optional : int
-  }
+let sprint_arr l =
+  let cl =
+    List.map
+      (function
+       | Unknown -> '?'
+       | Operational -> '.'
+       | Damaged -> '#')
+      l
+  in
+  String.of_seq (List.to_seq cl)
+;;
 
 let get_opt lst count =
-  let z = { min = count; optional = 0 } in
-  let rec get_opt' lst o =
+  let rec get_opt' lst c o =
     match lst with
     | [] -> o, []
-    | Operational :: tl -> if o.min == 0 && o.optional == 0 then get_opt' tl z else o, tl
-    | Damaged :: tl -> get_opt' tl { min = o.min + 1; optional = o.optional }
-    | Unknown :: tl -> get_opt' tl { min = o.min; optional = o.optional + 1 }
+    | Operational :: tl -> if c == 0 then get_opt' tl 0 [] else c :: o, tl
+    | Damaged :: tl -> get_opt' tl (c + 1) o
+    | Unknown :: tl -> get_opt' tl (c + 1) (c :: o)
   in
-  get_opt' lst z
+  get_opt' lst count []
 ;;
 
 let check_possible lst num count =
   (* print_arr lst; *)
   Printf.printf "count: %d, num: %d, lst: " count num;
   print_arr lst;
-  let opt, l = get_opt lst count in
-  Printf.printf "min: %d, range: %d, rest: " opt.min opt.optional;
-  print_arr l;
-  opt.min <= num && opt.min + opt.optional >= num
+  let opt, _ = get_opt lst count in
+  Utils.print_list opt;
+  match List.find_opt (fun x -> x == num) opt with
+  | Some _ -> true
+  | None ->
+    (match List.find_opt (fun x -> x == 0) opt with
+     | Some _ -> true
+     | None -> false)
 ;;
 
 let count_with_unknown2 { springs; nums } =
@@ -139,6 +149,66 @@ let count_with_unknown2 { springs; nums } =
   count_with_unknown' [] 0 springs nums
 ;;
 
+let expect lst t = if List.fold_left (fun c x -> x == t && c) true lst then 1 else 0
+
+(* let basic_sieve todo nums = *)
+(*   let o, d, u = *)
+(*     List.fold_left *)
+(*       (fun (x, y, z) i -> *)
+(*         match i with *)
+(*         | Unknown -> x, y, z + 1 *)
+(*         | Damaged -> x, y + 1, z *)
+(*         | Operational -> x + 1, y, z) *)
+(*       (0, 0, 0) *)
+(*       todo *)
+(*   in *)
+(*   Utils.sum nums <= u + d && List.length nums <= o + u + 1 *)
+(* ;; *)
+
+let rec strip lst =
+  match lst with
+  | Operational :: tl -> strip tl
+  | _ -> lst
+;;
+
+let cwu2 i { springs; nums } =
+  print_int i;
+  print_char ':';
+  let tbl = Hashtbl.create 100000 in
+  let rec cwu' damaged todo current_num remaining_nums =
+    let cwu_inner damaged todo current_num remaining_nums =
+      match todo with
+      | [] -> if damaged == current_num && List.length remaining_nums == 0 then 1 else 0
+      | Operational :: tl ->
+        (match damaged with
+         | 0 -> cwu' 0 tl current_num remaining_nums
+         | x when x == current_num ->
+           (match remaining_nums with
+            | h :: t -> cwu' 0 tl h t
+            | [] -> cwu' 0 tl 0 [])
+         | _ -> 0)
+      | Damaged :: tl ->
+        if damaged >= current_num
+        then 0
+        else cwu' (damaged + 1) tl current_num remaining_nums
+      | Unknown :: tl ->
+        cwu' damaged (Operational :: tl) current_num remaining_nums
+        + cwu' damaged (Damaged :: tl) current_num remaining_nums
+    in
+    (* let todo = if damaged == 0 then strip todo else todo in *)
+    match Hashtbl.find_opt tbl (damaged, todo, current_num, remaining_nums) with
+    | None ->
+      let inner = cwu_inner damaged todo current_num remaining_nums in
+      Hashtbl.add tbl (damaged, todo, current_num, remaining_nums) inner;
+      inner
+    | Some i -> i
+  in
+  let res = cwu' 0 springs (List.hd nums) (List.tl nums) in
+  print_int res;
+  print_endline "";
+  res
+;;
+
 let unfold_input { springs; nums } =
   { springs =
       List.concat
@@ -154,7 +224,9 @@ let unfold_input { springs; nums } =
 
 let part2 () =
   let input = parse_input () in
-  (* let input = List.map unfold_input input in *)
-  count_with_unknown2 (List.nth input 2)
+  print_int (List.length input);
+  print_endline "";
+  let input = List.map unfold_input input in
+  List.mapi cwu2 input |> List.fold_left ( + ) 0
 ;;
-(* |> List.fold_left ( + ) 0 *)
+(* cwu2 4 (List.nth input 4) *)
