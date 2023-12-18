@@ -40,3 +40,9 @@ let rec transpose = function
 ;;
 
 let sum = List.fold_left (+) 0
+
+let get_xy matrix (x, y) =
+  match x, y with
+  | x, y when x < 0 || y < 0 -> None
+  | _ -> Option.bind (List.nth_opt matrix y) (fun l -> List.nth_opt l x)
+;;
